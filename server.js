@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
-const mongoose = require('mongoose'); // Usamos Mongoose para la conexión
+const mongoose = require('mongoose'); // Usamos mongoose en lugar de MongoClient
 const userRoutes = require('./server/routes/userRoutes');
 const bookRoutes = require('./server/routes/bookRoutes');
 const genreRoutes = require('./server/routes/genreRoutes');
@@ -29,7 +29,7 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: `http://localhost:${PORT}`,
+        url: `http://localhost:${PORT}`, // Utiliza el puerto del servidor
         description: 'Servidor local',
       },
     ],
@@ -48,25 +48,36 @@ app.use('/api', authRoutes);
 // Usar Swagger UI para exponer la documentación
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Conexión a MongoDB con Mongoose
+// Conexión a MongoDB con mongoose
 async function connectToDatabase() {
   try {
+    // Conexión a MongoDB usando mongoose
     await mongoose.connect(uri, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 30000, // Ajusta el tiempo de espera
+      serverSelectionTimeoutMS: 30000, // Tiempo de espera para selección de servidor
     });
-    console.log('Conectado a MongoDB con Mongoose');
+
+    console.log('Conectado a MongoDB Atlas con mongoose');
   } catch (error) {
-    console.error('Error al conectar a MongoDB:', error);
+    console.error('Error al conectar a MongoDB Atlas con mongoose:', error);
     process.exit(1); // Sale del proceso si hay un error crítico
   }
 }
 
-// Llama a la función para conectar a la base de datos y luego iniciar el servidor
+// Llamada a la función para conectar a la base de datos y luego iniciar el servidor
 connectToDatabase().then(() => {
+  // Inicia el servidor solo después de conectar a la base de datos
   app.listen(PORT, () => {
     console.log(`Servidor iniciado en el puerto ${PORT}`);
     console.log(`Documentación disponible en http://localhost:${PORT}/api-docs`);
+  });
+
+  // Manejo de cierre de la aplicación
+  process.on('SIGINT', async () => {
+    console.log('Cerrando conexión a MongoDB...');
+    await mongoose.connection.close(); // Cierra la conexión con mongoose
+    console.log('Conexión a MongoDB cerrada');
+    process.exit(0);
   });
 });
